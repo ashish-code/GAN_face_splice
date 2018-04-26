@@ -21,7 +21,7 @@ options:
 Steps to follow:
 
 1. Download GAN generated images into a directory, default is "./GAN_Faces". You can create your own directory and specify it in the input arguments
-2. Download MediFor images containing faces from the MediFor browser using the steps specified by Mark Kozak. Save these images in directory ./MediFor_Images
+2. Download images containing faces from the MediFor browser. Save these images in directory ./MediFor_Images
 3. Create an output directory, default is ./GAN_MediFor, specify path in arguments if creating your own
 4. Run the program. It will read the donor and recipient images and save the output spliced images into the output directory.
 
