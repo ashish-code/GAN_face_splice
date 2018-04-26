@@ -80,6 +80,18 @@ def get_landmarks(im):
     return numpy.matrix([[p.x, p.y] for p in predictor(im, rects[0]).parts()])
 
 
+def annotate_landmarks(im, landmarks):
+    im = im.copy()
+    for idx, point in enumerate(landmarks):
+        pos = (point[0, 0], point[0, 1])
+        cv2.putText(im, str(idx), pos,
+                    fontFace=cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+                    fontScale=0.4,
+                    color=(0, 0, 255))
+        cv2.circle(im, pos, 3, color=(0, 255, 255))
+    return im
+
+
 def draw_convex_hull(im, points, color):
     points = cv2.convexHull(points)
     cv2.fillConvexPoly(im, points, color=color)
@@ -128,10 +140,6 @@ def transformation_from_points(points1, points2):
 
     U, S, Vt = numpy.linalg.svd(points1.T * points2)
 
-	"""
-    The R we seek is in fact the transpose of the one given by U * Vt. This is because the above formulation assumes the matrix goes on the right
-    (with row vectors) where as our solution requires the matrix to be on the left (with column vectors).
-    """
     R = (U * Vt).T
 
     return numpy.vstack([numpy.hstack(((s2 / s1) * R,
@@ -143,12 +151,11 @@ def read_im_and_landmarks(fname):
 	"""
 	Read the computed facial landmarks
 	"""
-    im = cv2.imread(fname, cv2.IMREAD_COLOR)
-    im = cv2.resize(im, (im.shape[1] * SCALE_FACTOR,
+	im = cv2.imread(fname, cv2.IMREAD_COLOR)
+	im = cv2.resize(im, (im.shape[1] * SCALE_FACTOR,
                          im.shape[0] * SCALE_FACTOR))
-    s = get_landmarks(im)
-
-    return im, s
+	s = get_landmarks(im)
+	return im, s
 
 
 def warp_im(im, M, dshape):
@@ -156,14 +163,14 @@ def warp_im(im, M, dshape):
 	Affine transform donor face image patch to overlay on the recipient face patch with minimal distortion
 	"""
 	
-    output_im = numpy.zeros(dshape, dtype=im.dtype)
-    cv2.warpAffine(im,
+	output_im = numpy.zeros(dshape, dtype=im.dtype)
+	cv2.warpAffine(im,
                    M[:2],
                    (dshape[1], dshape[0]),
                    dst=output_im,
                    borderMode=cv2.BORDER_TRANSPARENT,
                    flags=cv2.WARP_INVERSE_MAP)
-    return output_im
+	return output_im
 
 
 def correct_colors(im1, im2, landmarks1):
@@ -173,19 +180,21 @@ def correct_colors(im1, im2, landmarks1):
 	Note: Further work will improve on geometric distortion (cylindrical, spherical, etc.) and image intrinsics
 	"""
 	
-    blur_amount = COLOR_CORRECT_BLUR_FRAC * numpy.linalg.norm(
+	blur_amount = COLOR_CORRECT_BLUR_FRAC * numpy.linalg.norm(
                               numpy.mean(landmarks1[LEFT_EYE_POINTS], axis=0) -
                               numpy.mean(landmarks1[RIGHT_EYE_POINTS], axis=0))
-    blur_amount = int(blur_amount)
-    if blur_amount % 2 == 0:
-        blur_amount += 1
-    im1_blur = cv2.GaussianBlur(im1, (blur_amount, blur_amount), 0)
-    im2_blur = cv2.GaussianBlur(im2, (blur_amount, blur_amount), 0)
+	
+	blur_amount = int(blur_amount)
+	if blur_amount % 2 == 0:
+		blur_amount += 1
+	
+	im1_blur = cv2.GaussianBlur(im1, (blur_amount, blur_amount), 0)
+	im2_blur = cv2.GaussianBlur(im2, (blur_amount, blur_amount), 0)
 
-    # Note: to avoid divide-by-zero errors
-    im2_blur += (128 * (im2_blur <= 1.0)).astype(im2_blur.dtype)
-
-    return (im2.astype(numpy.float64) * im1_blur.astype(numpy.float64) /
+	# Note: to avoid divide-by-zero errors
+	im2_blur += (128 * (im2_blur <= 1.0)).astype(im2_blur.dtype)
+	
+	return (im2.astype(numpy.float64) * im1_blur.astype(numpy.float64) /
                                                 im2_blur.astype(numpy.float64))
 
 
@@ -224,9 +233,9 @@ def process_images():
 	"""
 	
 	parser = argparse.ArgumentParser(description="Splice image patch for face from GAN generated donor to detected face in recipient image.")
-	parser.add_argument("-d", "--donor", dest="donor", default="./GAN_Faces", help="path to directory containing GAN generated faces")
-	parser.add_argument("-r", "--recipient", dest="recipient", default="./MediFor_Images", help="path to directory containing images into which faces are spliced")
-	parser.add_argument("-o", "--output", dest="output", default="./GAN_MediFor", help="output directory into which spliced images are saved")
+	parser.add_argument("-d", "--donor", dest="donor", default="./GAN_Faces/", help="path to directory containing GAN generated faces")
+	parser.add_argument("-r", "--recipient", dest="recipient", default="./MediFor_Images/", help="path to directory containing images into which faces are spliced")
+	parser.add_argument("-o", "--output", dest="output", default="./GAN_MediFor/", help="output directory into which spliced images are saved")
 	
 	args = parser.parse_args()
 	donor_directory = args.donor
@@ -272,10 +281,10 @@ def process_images():
 		for recipient_img in recipient_paths:
 			recipient_path = recipient_directory + recipient_img
 			out_img = head_img.split('.')[0] + '--' + recipient_img.split('.')[0] + '.png'
-			out_path = out_directory + out_img
+			out_path = os.path.join(out_directory, out_img)
 			try:
 				splice_donor_recipient(recipient_path, head_path, out_path)
-				print('{}, {}, {}'.format(head_path, recipient_path, out_path))
+				print('donor: {}, recipient: {}\n output: {}'.format(head_path, recipient_path, out_path))
 			except Exception as err:
 				print(err)
 				lf.write('Issue with: {}\n'.format(out_img))
