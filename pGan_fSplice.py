@@ -60,7 +60,7 @@ COLOR_CORRECT_BLUR_FRAC = 0.6
 
 # instantiate objects from dlib library classes for face detection
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(PREDICTOR_PATH)
+predictor = None
 
 class TooManyFaces(Exception):
     pass
@@ -68,8 +68,14 @@ class TooManyFaces(Exception):
 class NoFaces(Exception):
     pass
 
+def loadModel(path = None):
+	global predictor
+	if predictor is None:
+		path = PREDICTOR_PATH if path is None else path
+		predictor = dlib.shape_predictor(path)
 
 def get_landmarks(im):
+    global predictor
     rects = detector(im, 1)
     
     if len(rects) > 1:
@@ -236,15 +242,19 @@ def process_images():
 	parser.add_argument("-d", "--donor", dest="donor", default="./GAN_Faces/", help="path to directory containing GAN generated faces")
 	parser.add_argument("-r", "--recipient", dest="recipient", default="./MediFor_Images/", help="path to directory containing images into which faces are spliced")
 	parser.add_argument("-o", "--output", dest="output", default="./GAN_MediFor/", help="output directory into which spliced images are saved")
-	
+	parser.add_argument("-f", "--files", dest="files", default=False, help="If the input and output are files not directories", action='store_true')
+
 	args = parser.parse_args()
 	donor_directory = args.donor
 	recipient_directory = args.recipient
 	out_directory = args.output
+	fi = args.files
 	
 	# donor images
 	try:
-		head_image_paths = os.listdir(donor_directory)
+		head_image_paths = os.listdir(donor_directory) if not fi else [donor_directory]
+		if not os.path.exists(head_image_paths[0]):
+			raise ValueError
 	except:
 		print('Did you create the donor image directory?')
 		print('Quiting ...')
@@ -252,14 +262,16 @@ def process_images():
 		
 	# recipient images
 	try:
-		recipient_paths = os.listdir(recipient_directory)
+		recipient_paths = os.listdir(recipient_directory) if not fi else [recipient_directory]
+		if not os.path.exists(recipient_paths[0]):
+			raise ValueError
 	except:
 		print('Did you create the recipient image directory?')
 		print('Quiting ...')
 		return
 	
 	# output folder existence
-	if not os.path.exists(out_directory):
+	if not os.path.exists(out_directory) and not fi:
 		print('Did you create the output image directory?')
 		print('Quiting...')
 		return
@@ -274,14 +286,13 @@ def process_images():
 	The spliced images are named as <donor image name>--<recipient image name>.png
 	The spliced images can be renamed at a later date if a hashing function is used to rename donor or recipient image file names.	
 	"""
-	
-	
+
 	for head_img in head_image_paths:
-		head_path = donor_directory + head_img
+		head_path = donor_directory + head_img if not fi else head_img
 		for recipient_img in recipient_paths:
-			recipient_path = recipient_directory + recipient_img
+			recipient_path = recipient_directory + recipient_img if not fi else recipient_img
 			out_img = head_img.split('.')[0] + '--' + recipient_img.split('.')[0] + '.png'
-			out_path = os.path.join(out_directory, out_img)
+			out_path = os.path.join(out_directory, out_img) if not fi else out_directory
 			try:
 				splice_donor_recipient(recipient_path, head_path, out_path)
 				print('donor: {}, recipient: {}\n output: {}'.format(head_path, recipient_path, out_path))
@@ -296,8 +307,9 @@ if __name__ == '__main__':
 	Please read the documentation to set the data in appropriate directories.
 	The program will read images from these directories
 	"""
+	loadModel()
 	process_images()
-	
+
 
 
 
