@@ -157,7 +157,7 @@ def read_im_and_landmarks(fname):
 	"""
 	Read the computed facial landmarks
 	"""
-	im = cv2.imread(fname, cv2.IMREAD_COLOR)
+	im = cv2.imread(fname, cv2.IMREAD_COLOR)[:,:,0:3]
 	im = cv2.resize(im, (im.shape[1] * SCALE_FACTOR,
                          im.shape[0] * SCALE_FACTOR))
 	s = get_landmarks(im)
