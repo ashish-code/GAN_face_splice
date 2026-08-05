@@ -1,3 +1,4 @@
+> **Consolidated repository.** The classical landmark-based face-swap pipeline and additional assets — from the former standalone `face-image-swap` repo — are preserved on the [`variant/face-image-swap`](../../tree/variant/face-image-swap) branch.
 # GAN Face Splicing
 
 <div align="center">
